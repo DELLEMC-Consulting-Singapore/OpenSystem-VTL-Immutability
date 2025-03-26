@@ -293,6 +293,7 @@ def run_nsrmm_command(command):
         command_string = ' '.join(command)
         log_message(f"Networker: Executing delete command : {command_string}")
         log_message("Deleting inprogress")
+
         # Start the process without input first
         process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                    text=True)
@@ -300,19 +301,29 @@ def run_nsrmm_command(command):
         # Wait for 50 seconds before sending the input 'y'
         time.sleep(50)
 
-        # Send 'y' to the process after the delay
-        process.stdin.write('y\n')
-        process.stdin.flush()
+        # Check if the process is still alive before attempting to write
+        if process.poll() is None:  # process is still running
+            process.stdin.write('y\n')
+            process.stdin.flush()
 
-        # Capture the output after the input is sent
-        stdout, stderr = process.communicate()
+            # Capture the output after the input is sent
+            stdout, stderr = process.communicate()
 
-        # Log the command's output
-        log_message(f"Command output:\n{stdout}")
-        if stderr:
-            log_message(f"Error occurred while deleting volume:\n{stderr}")
+            # Log the command's output
+            log_message(f"Command output:\n{stdout}")
+            if stderr:
+                log_message(f"Error occurred while deleting volume:\n{stderr}")
+        else:
+            log_message("Process terminated before sending input.")
 
         return True
+
+    except BrokenPipeError as e:
+        log_message(f"Broken pipe error: {str(e)}. The process may have terminated unexpectedly.")
+        return False
     except subprocess.CalledProcessError as e:
         log_message(f"Error occurred while deleting volume: {str(e)}")
+        return False
+    except Exception as e:
+        log_message(f"Unexpected error occurred: {str(e)}")
         return False
