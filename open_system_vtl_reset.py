@@ -3,9 +3,10 @@ import sys
 from datetime import datetime
 import argparse
 import re
+import time
 
 import utils
-from utils import log_message, validate_yaml_file, get_input_parameters, decrypt_credentials, execute_ssh_command, generate_report_expired
+from utils import run_nsrmm_command, run_nsrjb_command, log_message, validate_yaml_file, get_input_parameters, decrypt_credentials, execute_ssh_command, generate_report_expired
 
 class OpenSystemVTLReset():
     # __init__ is a special method called whenever you try to make
@@ -28,6 +29,7 @@ class OpenSystemVTLReset():
         self.imported_barcodes = []
         self.log_message = log_message
         self.doamin_specific_pools = []
+        self.jukebox_name = []
     def set_pool(self, pool):
         self.pool = pool
 
@@ -66,7 +68,7 @@ class OpenSystemVTLReset():
                 self.instances = data.get('open_system_instances')
                 self.cred_file = data.get('open_system_credential_file_path')
                 self.pools = data.get('pool_names')
-
+                self.jukebox_name = data.get('jukebox_name')
             else:
                 print("Failed to load parameters.")
                 sys.exit(1)
@@ -178,6 +180,8 @@ class OpenSystemVTLReset():
                         "size": tapes[4],
                         "retention_time": tapes[7]
                     }
+                if tape_info["barcode"] == "TEST01L5":
+                    tape_list.append(tape_info)
                 state = self.check_state(tape_info)
                 check_retention_date_tape = self.check_retention_date(tape_info)
                 if state and check_retention_date_tape:
@@ -275,25 +279,50 @@ class OpenSystemVTLReset():
             failed_tape_while_remove = []
             failed_tape_while_create = []
             failed_tape_while_import = []
+            failed_tape_while_delete_on_networker = []
             for rl_tape in self.retention_locked_tape_list:
                 self.log_message("===========================================================================================================")
-                export_result = self.export_tape_from_library(rl_tape)
-                if export_result:
-                    remove_result = self.execute_tape_remove_commmand(rl_tape)
-                    if remove_result:
-                        created_result = self.create_tape(rl_tape)
-                        if created_result:
-                            import_result = self.import_tape_from_library(rl_tape)
-                            if import_result:
-                                created_tapes.append(rl_tape["barcode"])
+
+                #delete from the networker
+                command = ['nsrmm', '-d', rl_tape["barcode"]]
+                delete_result = run_nsrmm_command(command)
+
+                # sleep 60 seconds to refresh the tape on networker
+                time.sleep(60)
+
+                if delete_result:
+                    self.log_message(f'barcode {rl_tape["barcode"]} has been deleted from the networker')
+                    export_result = self.export_tape_from_library(rl_tape)
+                    if export_result:
+                        remove_result = self.execute_tape_remove_commmand(rl_tape)
+                        if remove_result:
+                            created_result = self.create_tape(rl_tape)
+                            if created_result:
+                                import_result = self.import_tape_from_library(rl_tape)
+                                if import_result:
+
+                                    #sleep 60 seconds to refresh the tape on networker
+                                    time.sleep(60)
+
+                                    # labelling the volume
+                                    command = ['nsrjb', '-L', '-j', self.jukebox_name, f'-b{self.pool}', '-T', rl_tape["barcode"], '-Y']
+
+                                    self.log_message(f'Labeling barcode {rl_tape["barcode"]} on networker')
+
+                                    labeling = run_nsrjb_command(command)
+                                    if labeling:
+                                        self.log_message(f'Labeling barcode {rl_tape["barcode"]} on networker is completed')
+                                    created_tapes.append(rl_tape["barcode"])
+                                else:
+                                    failed_tape_while_import.append(rl_tape)
                             else:
-                                failed_tape_while_import.append(rl_tape)
+                                failed_tape_while_create.append(rl_tape)
                         else:
-                            failed_tape_while_create.append(rl_tape)
+                            failed_tape_while_remove.append(rl_tape)
                     else:
-                        failed_tape_while_remove.append(rl_tape)
+                        failed_tape_while_export.append(rl_tape)
                 else:
-                    failed_tape_while_export.append(rl_tape)
+                    failed_tape_while_delete_on_networker.append(rl_tape)
                 self.log_message(
                     "===========================================================================================================")
 
@@ -431,8 +460,13 @@ class OpenSystemVTLReset():
             self.log_message(f"Failed to retrieve Pool: {vtl_pool_name} details.")
             return []
 
-        heading = ['Barcode', 'Pool', 'Location', 'State', 'Size', 'Used (%)', 'Comp', 'Modification Time',
-                   'Total size of tapes:', 'Total pools:', 'Total number of tapes:', 'Average Compression:']
+        heading = ['Processing tapes....', 'Barcode', 'Pool', 'Location', 'State', 'Size', 'Used (%)', 'Comp',
+                   'Modification Time',
+                   'Total size of tapes:', 'Total pools:', 'Total number of tapes:', 'Average Compression:'
+                                                                                     '--------',
+                   ' --------------------', ' -----------------------', ' -----', ' --------', ' ----------------',
+                   ' ----', ' -------------------'
+                   ]
         tape_list = []
         try:
             for line in pool_data.split("\n"):
