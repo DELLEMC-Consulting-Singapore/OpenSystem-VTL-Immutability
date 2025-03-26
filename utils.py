@@ -1,4 +1,4 @@
-import json
+import time
 import sys
 import os
 import base64
@@ -6,6 +6,7 @@ import yaml
 from datetime import datetime, timedelta
 import paramiko
 import urllib3
+import subprocess
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -22,6 +23,14 @@ RETENTION_LOCK_REPORT_FOLDER = full_path+'/reports_retention_lock/'
 
 #Expired Retention Lock report
 EXPIRED_RL_REPORT_FOLDER = full_path+'/reports_expired_RL/'
+
+heading = ['Processing tapes....', 'Barcode', 'Pool', 'Location', 'State', 'Size', 'Used (%)', 'Comp',
+               'Modification Time',
+               'Total size of tapes:', 'Total pools:', 'Total number of tapes:', 'Average Compression:'
+                                                                                 '--------',
+               ' --------------------', ' -----------------------', ' -----', ' --------', ' ----------------',
+               ' ----', ' -------------------'
+               ]
 
 
 def log_message(message):
@@ -212,3 +221,98 @@ def size_to_bytes(size_str):
         return size_value * 1024 * 1024 * 1024 * 1024
     else:
         raise ValueError(f"Unsupported unit: {size_unit}")
+
+def filter_result(pool_data, tape_list_result):
+    tape_list = []
+    try:
+        for line in pool_data.split("\n"):
+
+            line = line.split('  ')
+
+            if line[0].strip() == '':
+                continue
+            # print(line)
+            # Check if any element in the array contains a dash '-'
+            # remove_dash = any('-' in item for item in line)
+
+            # if remove_dash:
+            #    continue
+
+            # print(line)
+            # Check if any element in the array contains a dash 'Barcode'
+            # remove_heading = True if line[0].strip() in heading else False
+            remove_heading = set(line) & set(heading)
+
+            if remove_heading:
+                continue
+
+            if len(line) < 2:
+                continue
+            # print(line)
+            tapes = []
+
+            for tape_data in line:
+                tape_data = tape_data.strip()
+                if tape_data:
+                    tapes.append(tape_data)
+
+            if len(tapes) == 8:
+                if tapes[0].strip() in tape_list_result:
+                    tape_info = {
+                        "barcode": tapes[0],
+                        "pool_name": tapes[1],
+                        "location": tapes[2],
+                        "state": tapes[3],
+                        "size": tapes[4],
+                        "used": tapes[5],
+                        "modification_time": tapes[7]
+                    }
+                    tape_list.append(tape_info)
+    except Exception as e:
+        log_message(str(e))
+
+    return tape_list
+
+
+def run_nsrjb_command(command):
+    try:
+        command_string = ' '.join(command)
+        log_message(f"Executing labeling command : {command_string}")
+        result = subprocess.run(command, capture_output=True, text=True, check=True)
+        # sleep 60 seconds to refresh the tape on networker
+        time.sleep(60)
+        log_message(f"Command output:\n {str(result.stdout)}")
+        return True
+    except subprocess.CalledProcessError as e:
+        log_message(f"Error occurred: {str(e)}")
+        return False
+
+
+def run_nsrmm_command(command):
+    try:
+        command_string = ' '.join(command)
+        log_message(f"Networker: Executing delete command : {command_string}")
+        log_message("Deleting inprogress")
+        # Start the process without input first
+        process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                   text=True)
+
+        # Wait for 50 seconds before sending the input 'y'
+        time.sleep(50)
+
+        # Send 'y' to the process after the delay
+        process.stdin.write('y\n')
+        process.stdin.flush()
+
+        # Capture the output after the input is sent
+        stdout, stderr = process.communicate()
+
+        # Log the command's output
+        log_message(f"Command output:\n{stdout}")
+        if stderr:
+            log_message(f"Error occurred while deleting volume:\n{stderr}")
+
+        return True
+    except subprocess.CalledProcessError as e:
+        log_message(f"Error occurred while deleting volume: {str(e)}")
+        return False
