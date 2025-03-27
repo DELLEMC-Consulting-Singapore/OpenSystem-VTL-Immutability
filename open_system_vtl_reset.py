@@ -184,7 +184,7 @@ class OpenSystemVTLReset():
                     tape_list.append(tape_info)
                 state = self.check_state(tape_info)
                 check_retention_date_tape = self.check_retention_date(tape_info)
-                if state and check_retention_date_tape:
+                if state and check_retention_date_tape and (tape_info["barcode"] == "TEST11L5" or tape_info["barcode"] == "TEST30L5"):
                     tape_list.append(tape_info)
         except Exception as e:
             self.log_message(e)
@@ -281,6 +281,7 @@ class OpenSystemVTLReset():
             failed_tape_while_import = []
             failed_tape_while_delete_on_networker = []
             tapes_not_found_on_jukebox = []
+            tapes_not_labled_on_jukebox = []
             for rl_tape in self.retention_locked_tape_list:
                 self.log_message("===========================================================================================================")
 
@@ -299,7 +300,7 @@ class OpenSystemVTLReset():
                     self.log_message(f'Refreshing networker')
 
                     # sleep 60 seconds to refresh the tape on networker
-                    time.sleep(60)
+                    time.sleep(120)
 
                     if delete_result:
                         self.log_message(f'barcode {rl_tape["barcode"]} has been deleted from the networker')
@@ -313,8 +314,8 @@ class OpenSystemVTLReset():
                                     if import_result:
 
                                         self.log_message(f'Refreshing networker')
-                                        #sleep 60 seconds to refresh the tape on networker
-                                        time.sleep(60)
+                                        #sleep 120 seconds to refresh the tape on networker
+                                        time.sleep(180)
 
                                         # labelling the volume
                                         command = ['nsrjb', '-L', '-j', self.jukebox_name, f'-b{self.pool}', '-T', rl_tape["barcode"], '-Y']
@@ -327,6 +328,8 @@ class OpenSystemVTLReset():
 
                                         if labeling:
                                             self.log_message(f'Labeling barcode {rl_tape["barcode"]} on networker is completed')
+                                        else:
+                                            tapes_not_labled_on_jukebox.append(rl_tape)
                                         created_tapes.append(rl_tape["barcode"])
                                     else:
                                         failed_tape_while_import.append(rl_tape)
@@ -373,8 +376,13 @@ class OpenSystemVTLReset():
 
             if len(tapes_not_found_on_jukebox) > 0:
                 self.log_message(f"[START][FAILED] List of tapes not found on jukebox {self.jukebox_name}")
-                self.log_message(json.dumps(failed_tape_while_delete_on_networker, indent=4))
-                self.log_message("[END][FAILED] List of tapes not found on jukebox {self.jukebox_name}")
+                self.log_message(json.dumps(tapes_not_found_on_jukebox, indent=4))
+                self.log_message(f"[END][FAILED] List of tapes not found on jukebox {self.jukebox_name}")
+
+            if len(tapes_not_labled_on_jukebox) > 0:
+                self.log_message(f"[START][FAILED] List of tapes not labeled on jukebox {self.jukebox_name}")
+                self.log_message(json.dumps(tapes_not_labled_on_jukebox, indent=4))
+                self.log_message(f"[END][FAILED] List of tapes not labeled on jukebox {self.jukebox_name}")
             self.created_tapes = created_tapes
         else:
             self.log_message("No RL tapes found")
@@ -619,6 +627,8 @@ if __name__ == '__main__':
                 #get all retention-lock expired tapes
                 open_system_reset_obj.get_tapes_by_pool()
 
+                exit(1)
+                
                 # auto delete and create RL expired tapes
                 open_system_reset_obj.remove_retention_locked_tapes()
 
