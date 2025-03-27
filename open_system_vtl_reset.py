@@ -280,49 +280,66 @@ class OpenSystemVTLReset():
             failed_tape_while_create = []
             failed_tape_while_import = []
             failed_tape_while_delete_on_networker = []
+            tapes_not_found_on_jukebox = []
             for rl_tape in self.retention_locked_tape_list:
                 self.log_message("===========================================================================================================")
 
-                #delete from the networker
-                command = ['nsrmm', '-d', rl_tape["barcode"]]
-                delete_result = run_nsrmm_command(command)
+                #verifying tape is available on jukebox networker
+                command = ['nsrjb', '-C', '-j', self.jukebox_name,  rl_tape["barcode"]]
+                self.log_message(f"verifying barcode {rl_tape['barcode']} available on jukebox {self.jukebox_name}")
 
-                # sleep 60 seconds to refresh the tape on networker
-                time.sleep(60)
+                is_available = run_nsrjb_command(command)
 
-                if delete_result:
-                    self.log_message(f'barcode {rl_tape["barcode"]} has been deleted from the networker')
-                    export_result = self.export_tape_from_library(rl_tape)
-                    if export_result:
-                        remove_result = self.execute_tape_remove_commmand(rl_tape)
-                        if remove_result:
-                            created_result = self.create_tape(rl_tape)
-                            if created_result:
-                                import_result = self.import_tape_from_library(rl_tape)
-                                if import_result:
+                if is_available:
+                    #delete from the networker
+                    command = ['nsrmm', '-d', rl_tape["barcode"]]
 
-                                    #sleep 60 seconds to refresh the tape on networker
-                                    time.sleep(60)
+                    delete_result = run_nsrmm_command(command)
 
-                                    # labelling the volume
-                                    command = ['nsrjb', '-L', '-j', self.jukebox_name, f'-b{self.pool}', '-T', rl_tape["barcode"], '-Y']
+                    self.log_message(f'Refreshing networker')
 
-                                    self.log_message(f'Labeling barcode {rl_tape["barcode"]} on networker')
+                    # sleep 60 seconds to refresh the tape on networker
+                    time.sleep(60)
 
-                                    labeling = run_nsrjb_command(command)
-                                    if labeling:
-                                        self.log_message(f'Labeling barcode {rl_tape["barcode"]} on networker is completed')
-                                    created_tapes.append(rl_tape["barcode"])
+                    if delete_result:
+                        self.log_message(f'barcode {rl_tape["barcode"]} has been deleted from the networker')
+                        export_result = self.export_tape_from_library(rl_tape)
+                        if export_result:
+                            remove_result = self.execute_tape_remove_commmand(rl_tape)
+                            if remove_result:
+                                created_result = self.create_tape(rl_tape)
+                                if created_result:
+                                    import_result = self.import_tape_from_library(rl_tape)
+                                    if import_result:
+
+                                        self.log_message(f'Refreshing networker')
+                                        #sleep 60 seconds to refresh the tape on networker
+                                        time.sleep(60)
+
+                                        # labelling the volume
+                                        command = ['nsrjb', '-L', '-j', self.jukebox_name, f'-b{self.pool}', '-T', rl_tape["barcode"], '-Y']
+
+                                        self.log_message(f'Labeling barcode {rl_tape["barcode"]} on networker')
+
+                                        labeling = run_nsrjb_command(command)
+
+                                        self.log_message(f'Refreshing networker')
+
+                                        if labeling:
+                                            self.log_message(f'Labeling barcode {rl_tape["barcode"]} on networker is completed')
+                                        created_tapes.append(rl_tape["barcode"])
+                                    else:
+                                        failed_tape_while_import.append(rl_tape)
                                 else:
-                                    failed_tape_while_import.append(rl_tape)
+                                    failed_tape_while_create.append(rl_tape)
                             else:
-                                failed_tape_while_create.append(rl_tape)
+                                failed_tape_while_remove.append(rl_tape)
                         else:
-                            failed_tape_while_remove.append(rl_tape)
+                            failed_tape_while_export.append(rl_tape)
                     else:
-                        failed_tape_while_export.append(rl_tape)
+                        failed_tape_while_delete_on_networker.append(rl_tape)
                 else:
-                    failed_tape_while_delete_on_networker.append(rl_tape)
+                    tapes_not_found_on_jukebox.append(rl_tape)
                 self.log_message(
                     "===========================================================================================================")
 
@@ -349,6 +366,15 @@ class OpenSystemVTLReset():
                 self.log_message(json.dumps(failed_tape_while_import, indent=4))
                 self.log_message("[END][FAILED] List of tapes failed while import into pool")
 
+            if len(failed_tape_while_delete_on_networker) > 0:
+                self.log_message("[START][FAILED] List of tapes failed while deleting at networker")
+                self.log_message(json.dumps(failed_tape_while_delete_on_networker, indent=4))
+                self.log_message("[END][FAILED] List of tapes failed while deleting at networker")
+
+            if len(tapes_not_found_on_jukebox) > 0:
+                self.log_message(f"[START][FAILED] List of tapes not found on jukebox {self.jukebox_name}")
+                self.log_message(json.dumps(failed_tape_while_delete_on_networker, indent=4))
+                self.log_message("[END][FAILED] List of tapes not found on jukebox {self.jukebox_name}")
             self.created_tapes = created_tapes
         else:
             self.log_message("No RL tapes found")
