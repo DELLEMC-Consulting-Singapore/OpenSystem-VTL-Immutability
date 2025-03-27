@@ -277,7 +277,7 @@ def filter_result(pool_data, tape_list_result):
 def run_nsrjb_command(command):
     try:
         command_string = ' '.join(command)
-        log_message(f"Executing labeling command : {command_string}")
+        log_message(f"Executing command : {command_string}")
         result = subprocess.run(command, capture_output=True, text=True, check=True)
         # sleep 60 seconds to refresh the tape on networker
         time.sleep(60)
@@ -309,8 +309,6 @@ def run_nsrmm_command(command):
             # Capture the output after the input is sent
             stdout, stderr = process.communicate()
 
-            # Log the command's output
-            log_message(f"Command output:\n{stdout}")
             if stderr:
                 log_message(f"Error occurred while deleting volume:\n{stderr}")
         else:
