@@ -325,3 +325,60 @@ def run_nsrmm_command(command):
     except Exception as e:
         log_message(f"Unexpected error occurred: {str(e)}")
         return False
+
+
+def run_nsrjb_labeling_command(command, max_retries=3, retry_delay=5):
+    """
+    Runs the given command with retry logic in case of failure.
+
+    :param command: List of command arguments to execute
+    :param max_retries: Maximum number of retries before giving up
+    :param retry_delay: Delay between retries in seconds
+    :return: True if command succeeds, False otherwise
+    """
+    retries = 0
+    while retries < max_retries:
+        try:
+            command_string = ' '.join(command)
+            log_message(f"Executing command: {command_string}")
+
+            # Run the command and capture output
+            result = subprocess.run(command, capture_output=True, text=True, check=True)
+
+            # Log command output
+            log_message(f"Command output:\n {result.stdout}")
+
+            # Log the exit code (status)
+            log_message(f"Command executed successfully with exit code: {result.returncode}")
+
+            # Sleep 60 seconds to refresh the tape on networker
+            time.sleep(60)
+            return True  # Command succeeded, exit the loop and return True
+
+        except subprocess.CalledProcessError as e:
+            retries += 1
+            log_message(f"Error occurred: {str(e)}")
+
+            # Log the return code of the failed command
+            log_message(f"Command failed with exit code: {e.returncode}")
+            log_message(f"Error output:\n{e.stderr}")
+
+            # Check if the error message contains the specific exit status "3"
+            if "returned non-zero exit status 3" in str(e):
+                # If it is the specific error, allow one more retry
+                log_message("Exit status 3 detected. Retrying one more time...")
+                time.sleep(retry_delay)
+                continue  # Continue the loop to retry the command once more
+
+            # If we've exhausted all retries, stop and return False
+            if retries >= max_retries:
+                log_message("Max retries reached. Command failed.")
+                return False
+
+            # If retries left, log and wait before retrying
+            log_message(f"Retrying in {retry_delay} seconds... ({retries}/{max_retries})")
+            time.sleep(retry_delay)
+
+    # If we exit the loop, it means we've failed after max_retries
+    log_message("Command failed after maximum retries.")
+    return False
