@@ -6,7 +6,7 @@ import re
 import time
 
 import utils
-from utils import run_nsrmm_command, run_nsrjb_command, log_message, validate_yaml_file, get_input_parameters, decrypt_credentials, execute_ssh_command, generate_report_expired
+from utils import run_nsrjb_labeling_command, run_nsrmm_command, run_nsrjb_command, log_message, validate_yaml_file, get_input_parameters, decrypt_credentials, execute_ssh_command, generate_report_expired
 
 class OpenSystemVTLReset():
     # __init__ is a special method called whenever you try to make
@@ -182,7 +182,7 @@ class OpenSystemVTLReset():
                     }
                 state = self.check_state(tape_info)
                 check_retention_date_tape = self.check_retention_date(tape_info)
-                if state and check_retention_date_tape:
+                if state and check_retention_date_tape and (tape_info["barcode"] == "TEST31L5" or tape_info["barcode"] == "TEST32L5"):
                     tape_list.append(tape_info)
         except Exception as e:
             self.log_message(e)
@@ -320,7 +320,7 @@ class OpenSystemVTLReset():
 
                                         self.log_message(f'Labeling barcode {rl_tape["barcode"]} on networker')
 
-                                        labeling = run_nsrjb_command(command)
+                                        labeling = run_nsrjb_labeling_command(command)
 
                                         self.log_message(f'Refreshing networker')
 
@@ -624,7 +624,9 @@ if __name__ == '__main__':
 
                 #get all retention-lock expired tapes
                 open_system_reset_obj.get_tapes_by_pool()
-
+                
+                exit(1)
+                
                 # auto delete and create RL expired tapes
                 open_system_reset_obj.remove_retention_locked_tapes()
 
