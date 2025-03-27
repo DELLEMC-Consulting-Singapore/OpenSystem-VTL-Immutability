@@ -182,7 +182,7 @@ class OpenSystemVTLReset():
                     }
                 state = self.check_state(tape_info)
                 check_retention_date_tape = self.check_retention_date(tape_info)
-                if state and check_retention_date_tape and (tape_info["barcode"] == "TEST11L5" or tape_info["barcode"] == "TEST30L5"):
+                if state and check_retention_date_tape:
                     tape_list.append(tape_info)
         except Exception as e:
             self.log_message(e)
@@ -624,8 +624,6 @@ if __name__ == '__main__':
 
                 #get all retention-lock expired tapes
                 open_system_reset_obj.get_tapes_by_pool()
-
-                exit(1)
 
                 # auto delete and create RL expired tapes
                 open_system_reset_obj.remove_retention_locked_tapes()
