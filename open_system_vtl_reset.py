@@ -182,7 +182,7 @@ class OpenSystemVTLReset():
                     }
                 state = self.check_state(tape_info)
                 check_retention_date_tape = self.check_retention_date(tape_info)
-                if state and check_retention_date_tape and (tape_info["barcode"] == "TEST31L5" or tape_info["barcode"] == "TEST32L5"):
+                if state and check_retention_date_tape and (tape_info["barcode"] == "TEST34L5" or tape_info["barcode"] == "TEST35L5"):
                     tape_list.append(tape_info)
         except Exception as e:
             self.log_message(e)
@@ -297,8 +297,15 @@ class OpenSystemVTLReset():
 
                     self.log_message(f'Refreshing networker')
 
-                    # sleep 60 seconds to refresh the tape on networker
-                    time.sleep(120)
+                    # sleep 180 seconds to refresh the tape on networker
+                    time.sleep(180)
+
+                    # delete from the networker
+                    command = ['nsrmm', '-d', rl_tape["barcode"]]
+
+                    check_tape = run_nsrmm_command(command)
+
+                    log_message(f"checking tape on jukebox {check_tape}")
 
                     if delete_result:
                         self.log_message(f'barcode {rl_tape["barcode"]} has been deleted from the networker')
@@ -312,8 +319,8 @@ class OpenSystemVTLReset():
                                     if import_result:
 
                                         self.log_message(f'Refreshing networker')
-                                        #sleep 120 seconds to refresh the tape on networker
-                                        time.sleep(180)
+                                        #sleep 240 seconds to refresh the tape on networker
+                                        time.sleep(240)
 
                                         # labelling the volume
                                         command = ['nsrjb', '-L', '-j', self.jukebox_name, f'-b{self.pool}', '-T', rl_tape["barcode"], '-Y']
@@ -624,9 +631,9 @@ if __name__ == '__main__':
 
                 #get all retention-lock expired tapes
                 open_system_reset_obj.get_tapes_by_pool()
-                
+
                 exit(1)
-                
+
                 # auto delete and create RL expired tapes
                 open_system_reset_obj.remove_retention_locked_tapes()
 
