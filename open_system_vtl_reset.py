@@ -633,8 +633,6 @@ if __name__ == '__main__':
                 #get all retention-lock expired tapes
                 open_system_reset_obj.get_tapes_by_pool()
 
-                exit(1)
-
                 # auto delete and create RL expired tapes
                 open_system_reset_obj.remove_retention_locked_tapes()
 
