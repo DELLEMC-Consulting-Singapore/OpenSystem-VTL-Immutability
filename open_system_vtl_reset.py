@@ -285,14 +285,14 @@ class OpenSystemVTLReset():
                 self.log_message("===========================================================================================================")
 
                 #verifying tape is available on jukebox networker
-                command = ['sbin/nsrjb', '-C', '-j', self.jukebox_name,  rl_tape["barcode"]]
+                command = ['/sbin/nsrjb', '-C', '-j', self.jukebox_name,  rl_tape["barcode"]]
                 self.log_message(f"verifying barcode {rl_tape['barcode']} available on jukebox {self.jukebox_name}")
 
                 is_available = run_nsrjb_command(command)
 
                 if is_available:
                     #delete from the networker
-                    command = ['sbin/nsrmm', '-d', rl_tape["barcode"]]
+                    command = ['/sbin/nsrmm', '-d', rl_tape["barcode"]]
 
                     delete_result = run_nsrmm_command(command)
 
@@ -302,7 +302,7 @@ class OpenSystemVTLReset():
                     time.sleep(180)
 
                     # delete from the networker
-                    command = ['sbin/nsrmm', '-d', rl_tape["barcode"]]
+                    command = ['/sbin/nsrmm', '-d', rl_tape["barcode"]]
 
                     check_tape = run_nsrmm_command(command)
 
@@ -324,7 +324,7 @@ class OpenSystemVTLReset():
                                         time.sleep(240)
 
                                         # labelling the volume
-                                        command = ['sbin/nsrjb', '-L', '-j', self.jukebox_name, f'-b{self.pool}', '-T', rl_tape["barcode"], '-Y']
+                                        command = ['/sbin/nsrjb', '-L', '-j', self.jukebox_name, f'-b{self.pool}', '-T', rl_tape["barcode"], '-Y']
 
                                         self.log_message(f'Labeling barcode {rl_tape["barcode"]} on networker')
 
@@ -633,7 +633,7 @@ if __name__ == '__main__':
                 #get all retention-lock expired tapes
                 open_system_reset_obj.get_tapes_by_pool()
 
-                #exit(1)
+                exit(1)
 
                 # auto delete and create RL expired tapes
                 open_system_reset_obj.remove_retention_locked_tapes()
