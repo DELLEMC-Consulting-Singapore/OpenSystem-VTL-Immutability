@@ -1,6 +1,6 @@
 open_system_credential_file_path: ./open_system_credential.txt
-open_system_instance: "10.***.**.**"
-pool_name: "RL_TEST"
+open_system_instance: "10.17.37.76"
+pool_name: "BTR_NEW-DWHDB"
 retention_lock_period_for_tapes_for_monthly_in_years: 30
 
 # Minimum Retention lock period for MTREE for MONTHLY backups in DAYS
