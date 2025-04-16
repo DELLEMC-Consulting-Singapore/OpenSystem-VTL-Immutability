@@ -1,7 +1,7 @@
 open_system_credential_file_path: ./open_system_credential.txt
-open_system_instance: "10.241.216.42"
-pool_name: "test"
-retention_lock_period_for_tapes_for_daily_in_days: 1
+open_system_instance: "10.27.36.158"
+pool_name: "IDCBRZAFNDBA001_POOL"
+retention_lock_period_for_tapes_for_daily_in_days: 30
 
 # Minimum and Maximum Retention lock period for MTREE for DAILY backups in DAYS
 minimum_retention_lock_period_for_mtree_daily_backup_in_days: 1
