@@ -14,7 +14,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 full_path = os.path.abspath(os.path.dirname(__file__))
 DATE = datetime.now().strftime("%d_%m_%Y")
 LOGFILE = f"./script_{DATE}.log"
-LOGSFOLDER = "./logs/"
+LOGSFOLDER = full_path+"/logs/"
 
 REPORT_DATE_TIME = datetime.now().strftime("%d_%m_%Y_%H_%M_%S")
 
@@ -327,7 +327,7 @@ def run_nsrmm_command(command):
         return False
 
 
-def run_nsrjb_labeling_command(command, max_retries=3, retry_delay=5):
+def run_nsrjb_labeling_command(command, max_retries=3, retry_delay=60):
     """
     Runs the given command with retry logic in case of failure.
 
