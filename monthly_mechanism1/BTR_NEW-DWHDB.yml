@@ -1,0 +1,14 @@
+open_system_credential_file_path: ./open_system_credential.txt
+open_system_instance: "10.17.37.76"
+pool_name: "BTR_NEW-DWHDB"
+retention_lock_period_for_tapes_for_monthly_in_years: 30
+
+# Minimum Retention lock period for MTREE for MONTHLY backups in DAYS
+minimum_retention_lock_period_for_mtree_monthly_backup_in_days: 6
+
+# Maximum Retention lock period for MTREE for MONTHLY backups in YEARS
+maximum_retention_lock_period_for_mtree_monthly_backup_in_years: 30
+
+#overal_tape_size: "3000 TiB"
+minimum_tape_usage: "9.77 GiB"
+execution_logic_mechanism: 1
